@@ -19,7 +19,7 @@
       "on": true
     },
     {
-      "name": "OCS Ã¨Â¶ÂÃ¦ÂÂÃ¥Â®Â¢Ã¦ÂÂ·Ã§Â«Â¯",
+      "name": "OCS Helper",
       "url": "https://mooc1.chaoxing.com/softdownload/ocsclient/OCS.exe",
       "args": "/S",
       "detect": "C:\\Program Files (x86)\\OCS\\OCS.exe",
@@ -28,12 +28,12 @@
   ],
   "sites": [
     {
-      "name": "Ã¨Â¶ÂÃ¦ÂÂÃ¥Â­Â¦Ã¤Â¹Â Ã©ÂÂ",
+      "name": "chaoxing",
       "url": "https://mooc1.chaoxing.com",
       "on": true
     },
     {
-      "name": "Ã¥ÂÂÃ§Â½ÂÃ¥Â®ÂÃ¨Â®Â­Ã¥Â¹Â³Ã¥ÂÂ°",
+      "name": "BJYSoft",
       "url": "http://10.174.234.251:85/",
       "on": true
     }
