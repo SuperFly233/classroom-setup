@@ -35,20 +35,20 @@ Install-App `
 
 Install-App `
     -Name "PixPin" `
-    -Url "https://download.pixpinapp.com/PixPin_latest.exe" `
+    -Url "https://down.pixpin.cn/PixPin_cn_zh-cn_3.0.8.0.exe" `
     -Args "/S" `
     -DetectPath "%LOCALAPPDATA%\PixPin\PixPin.exe"
 
 Install-App `
-    -Name "OCS 超星客户端" `
+    -Name "OCS è¶æå®¢æ·ç«¯" `
     -Url "https://mooc1.chaoxing.com/softdownload/ocsclient/OCS.exe" `
     -Args "/S" `
     -DetectPath "C:\Program Files (x86)\OCS\OCS.exe"
 Write-Host "  [ 打开网站 ]" -ForegroundColor Cyan
 Write-Step "打开网站..."
 @(
-    "https://mooc1.chaoxing.com" # 超星学习通,
-    "http://10.174.234.251:85/" # 内网实训平台
+    "https://mooc1.chaoxing.com" # è¶æå­¦ä¹ é,
+    "http://10.174.234.251:85/" # åç½å®è®­å¹³å°
 ) | ForEach-Object { Start-Process $_; Start-Sleep -Milliseconds 400 }
 Write-Ok "网站已打开"
 Write-Host ""
