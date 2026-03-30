@@ -59,7 +59,7 @@ function Format-ETA($seconds) {
 }
 
 # ════════════════════════════════════════════════════════════
-#  带进度条的下载函数
+#  带进度条的下载函数 (主线程安全版)
 # ════════════════════════════════════════════════════════════
 function Invoke-Download {
     param(
@@ -68,92 +68,93 @@ function Invoke-Download {
         [string]$OutFile
     )
 
-    # 共享状态（ScriptBlock 闭包通信用）
-    $script:dlDone      = $false
-    $script:dlError     = $null
-    $script:dlPct       = 0
-    $script:dlReceived  = 0
-    $script:dlTotal     = 0
-    $script:dlSpeed     = 0
-    $script:dlETA       = 0
-
-    $wc = New-Object System.Net.WebClient
-
-    # 进度事件
-    $wc.add_DownloadProgressChanged({
-        param($s, $e)
-        $script:dlPct      = $e.ProgressPercentage
-        $script:dlReceived = $e.BytesReceived
-        $script:dlTotal    = $e.TotalBytesToReceive
-    })
-
-    # 完成事件
-    $wc.add_DownloadFileCompleted({
-        param($s, $e)
-        if ($e.Error) { $script:dlError = $e.Error.Message }
-        $script:dlDone = $true
-    })
-
-    # 异步启动下载
-    $wc.DownloadFileAsync([uri]$Url, $OutFile)
-
-    # 速度计算
-    $lastBytes  = 0
-    $lastTick   = [DateTime]::Now
-    $startTick  = [DateTime]::Now
-
     Write-Host ""
+    $startTick = [DateTime]::Now
 
-    # 渲染循环
-    while (-not $script:dlDone) {
-        Start-Sleep -Milliseconds 300
+    try {
+        # 使用 WebRequest 同步请求，避免多线程崩溃
+        $request = [System.Net.WebRequest]::Create($Url)
+        $request.Method = "GET"
+        $response = $request.GetResponse()
+        
+        $totalBytes = $response.ContentLength
+        $stream = $response.GetResponseStream()
 
-        $now      = [DateTime]::Now
-        $elapsed  = ($now - $lastTick).TotalSeconds
-        $total    = ($now - $startTick).TotalSeconds
+        # 每次读取 8KB
+        $buffer = New-Object byte[] 8192
+        $fileStream = [System.IO.File]::Create($OutFile)
 
-        if ($elapsed -ge 0.3) {
-            $delta            = $script:dlReceived - $lastBytes
-            $script:dlSpeed   = if ($elapsed -gt 0) { $delta / $elapsed } else { 0 }
-            $lastBytes        = $script:dlReceived
-            $lastTick         = $now
+        $downloadedBytes = 0
+        $lastTick = $startTick
+        $lastBytes = 0
+        $speed = 0
+
+        # 主线程循环读取流
+        while ($true) {
+            $read = $stream.Read($buffer, 0, $buffer.Length)
+            if ($read -le 0) { break } # 读取完毕
+            
+            $fileStream.Write($buffer, 0, $read)
+            $downloadedBytes += $read
+
+            $now = [DateTime]::Now
+            $elapsed = ($now - $lastTick).TotalSeconds
+
+            # 每 0.3 秒刷新一次屏幕，防止输出过快导致卡顿
+            if ($elapsed -ge 0.3) {
+                $delta = $downloadedBytes - $lastBytes
+                $speed = $delta / $elapsed
+                $lastBytes = $downloadedBytes
+                $lastTick = $now
+
+                $pct = 0
+                if ($totalBytes -gt 0) {
+                    $pct = [math]::Floor(($downloadedBytes / $totalBytes) * 100)
+                }
+
+                $remaining = $totalBytes - $downloadedBytes
+                $eta = if ($speed -gt 0) { $remaining / $speed } else { 0 }
+
+                $recvStr  = Format-Size $downloadedBytes
+                $totalStr = if ($totalBytes -gt 0) { Format-Size $totalBytes } else { "未知大小" }
+                $speedStr = if ($speed -gt 0) { Format-Speed $speed } else { "—" }
+                $etaStr   = Format-ETA $eta
+
+                # 进度条体
+                $barWidth = 36
+                $filled   = [int]($barWidth * $pct / 100)
+                $empty    = $barWidth - $filled
+                $bar      = ("█" * $filled) + ("░" * $empty)
+
+                $status = "  $recvStr / $totalStr   $speedStr   ETA $etaStr"
+
+                Write-Progress `
+                    -Activity "  下载 $Name" `
+                    -Status $status `
+                    -PercentComplete $pct `
+                    -CurrentOperation "[$bar] $pct%"
+            }
         }
-
-        $remaining = $script:dlTotal - $script:dlReceived
-        $script:dlETA = if ($script:dlSpeed -gt 0) { $remaining / $script:dlSpeed } else { 0 }
-
-        $pct      = $script:dlPct
-        $recvStr  = Format-Size $script:dlReceived
-        $totalStr = if ($script:dlTotal -gt 0) { Format-Size $script:dlTotal } else { "未知大小" }
-        $speedStr = if ($script:dlSpeed -gt 0) { Format-Speed $script:dlSpeed } else { "—" }
-        $etaStr   = Format-ETA $script:dlETA
-
-        # 进度条体
-        $barWidth = 36
-        $filled   = [int]($barWidth * $pct / 100)
-        $empty    = $barWidth - $filled
-        $bar      = ("█" * $filled) + ("░" * $empty)
-
-        # 状态行
-        $status = "  $recvStr / $totalStr   $speedStr   ETA $etaStr"
-
-        Write-Progress `
-            -Activity "  下载 $Name" `
-            -Status $status `
-            -PercentComplete $pct `
-            -CurrentOperation "[$bar] $pct%"
+    }
+    catch {
+        # 抛出异常让外层的 Install-App 捕获
+        throw $_ 
+    }
+    finally {
+        # 确保清理释放资源，解除文件占用
+        if ($null -ne $fileStream) { $fileStream.Dispose() }
+        if ($null -ne $stream)     { $stream.Dispose() }
+        if ($null -ne $response)   { $response.Dispose() }
     }
 
     Write-Progress -Activity "  下载 $Name" -Completed
 
-    if ($script:dlError) {
-        throw $script:dlError
-    }
-
     # 下载完成摘要
     $totalTime = ([DateTime]::Now - $startTick).TotalSeconds
-    $avgSpeed  = if ($totalTime -gt 0) { $script:dlTotal / $totalTime } else { 0 }
-    Write-Ok ("下载完成  " + (Format-Size $script:dlTotal) + "  均速 " + (Format-Speed $avgSpeed) + "  用时 {0:F1}s" -f $totalTime)
+    $totalBytesToReport = if ($totalBytes -gt 0) { $totalBytes } else { $downloadedBytes }
+    $avgSpeed  = if ($totalTime -gt 0) { $totalBytesToReport / $totalTime } else { 0 }
+    
+    Write-Ok ("下载完成  " + (Format-Size $totalBytesToReport) + "  均速 " + (Format-Speed $avgSpeed) + "  用时 {0:F1}s" -f $totalTime)
 }
 
 # ════════════════════════════════════════════════════════════
