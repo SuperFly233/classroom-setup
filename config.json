@@ -1,0 +1,41 @@
+{
+  "ghUser": "SuperFly233",
+  "ghRepo": "classroom-setup",
+  "ghBranch": "main",
+  "ghProxy": "https://ghfast.top/",
+  "apps": [
+    {
+      "name": "WPS Office",
+      "url": "https://official-package.wpscdn.cn/wps/download/WPS_Setup_25225.exe",
+      "args": "/S /v/qn",
+      "detect": "C:\\Program Files (x86)\\Kingsoft\\WPS Office",
+      "on": true
+    },
+    {
+      "name": "PixPin",
+      "url": "https://download.pixpinapp.com/PixPin_latest.exe",
+      "args": "/S",
+      "detect": "%LOCALAPPDATA%\\PixPin\\PixPin.exe",
+      "on": true
+    },
+    {
+      "name": "OCS 超星客户端",
+      "url": "https://mooc1.chaoxing.com/softdownload/ocsclient/OCS.exe",
+      "args": "/S",
+      "detect": "C:\\Program Files (x86)\\OCS\\OCS.exe",
+      "on": true
+    }
+  ],
+  "sites": [
+    {
+      "name": "超星学习通",
+      "url": "https://mooc1.chaoxing.com",
+      "on": true
+    },
+    {
+      "name": "内网实训平台",
+      "url": "http://10.174.234.251:85/",
+      "on": true
+    }
+  ]
+}
