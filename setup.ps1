@@ -195,7 +195,7 @@ Install-App `
 
 Write-Section "打开网站"
 $sites = @(
-    @{ Name = "chaoxing"; Url = "https://i.chaoxing.com/" },
+    @{ Name = "i.chaoxing"; Url = "https://i.chaoxing.com/" },
     @{ Name = "BJYSoft"; Url = "http://10.174.234.251:85/" }
 )
 foreach ($site in $sites) {
