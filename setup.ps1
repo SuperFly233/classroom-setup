@@ -47,7 +47,7 @@ Install-App `
 Write-Host "  [ 打开网站 ]" -ForegroundColor Cyan
 Write-Step "打开网站..."
 @(
-    "https://mooc1.chaoxing.com" # chaoxing,
+    "https://i.chaoxing.com/" # chaoxing,
     "http://10.174.234.251:85/" # BJYSoft
 ) | ForEach-Object { Start-Process $_; Start-Sleep -Milliseconds 400 }
 Write-Ok "网站已打开"
