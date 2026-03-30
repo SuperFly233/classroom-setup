@@ -41,7 +41,7 @@ Install-App `
 
 Install-App `
     -Name "OCS Helper" `
-    -Url "https://mooc1.chaoxing.com/softdownload/ocsclient/OCS.exe" `
+    -Url "https://cdn.ocsjs.com/app/download/2.9.24/ocs-2.9.24-setup-win-x64.exe" `
     -Args "/S" `
     -DetectPath "C:\Program Files (x86)\OCS\OCS.exe"
 Write-Host "  [ 打开网站 ]" -ForegroundColor Cyan
