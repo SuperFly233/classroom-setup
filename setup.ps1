@@ -40,15 +40,15 @@ Install-App `
     -DetectPath "%LOCALAPPDATA%\PixPin\PixPin.exe"
 
 Install-App `
-    -Name "OCS è¶æå®¢æ·ç«¯" `
+    -Name "OCS Ã¨Â¶ÂÃ¦ÂÂÃ¥Â®Â¢Ã¦ÂÂ·Ã§Â«Â¯" `
     -Url "https://mooc1.chaoxing.com/softdownload/ocsclient/OCS.exe" `
     -Args "/S" `
     -DetectPath "C:\Program Files (x86)\OCS\OCS.exe"
 Write-Host "  [ 打开网站 ]" -ForegroundColor Cyan
 Write-Step "打开网站..."
 @(
-    "https://mooc1.chaoxing.com" # è¶æå­¦ä¹ é,
-    "http://10.174.234.251:85/" # åç½å®è®­å¹³å°
+    "https://mooc1.chaoxing.com" # Ã¨Â¶ÂÃ¦ÂÂÃ¥Â­Â¦Ã¤Â¹Â Ã©ÂÂ,
+    "http://10.174.234.251:85/" # Ã¥ÂÂÃ§Â½ÂÃ¥Â®ÂÃ¨Â®Â­Ã¥Â¹Â³Ã¥ÂÂ°
 ) | ForEach-Object { Start-Process $_; Start-Sleep -Milliseconds 400 }
 Write-Ok "网站已打开"
 Write-Host ""
