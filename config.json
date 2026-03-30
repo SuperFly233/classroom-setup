@@ -13,13 +13,13 @@
     },
     {
       "name": "PixPin",
-      "url": "https://download.pixpinapp.com/PixPin_latest.exe",
+      "url": "https://down.pixpin.cn/PixPin_cn_zh-cn_3.0.8.0.exe",
       "args": "/S",
       "detect": "%LOCALAPPDATA%\\PixPin\\PixPin.exe",
       "on": true
     },
     {
-      "name": "OCS 超星客户端",
+      "name": "OCS è¶æå®¢æ·ç«¯",
       "url": "https://mooc1.chaoxing.com/softdownload/ocsclient/OCS.exe",
       "args": "/S",
       "detect": "C:\\Program Files (x86)\\OCS\\OCS.exe",
@@ -28,12 +28,12 @@
   ],
   "sites": [
     {
-      "name": "超星学习通",
+      "name": "è¶æå­¦ä¹ é",
       "url": "https://mooc1.chaoxing.com",
       "on": true
     },
     {
-      "name": "内网实训平台",
+      "name": "åç½å®è®­å¹³å°",
       "url": "http://10.174.234.251:85/",
       "on": true
     }
