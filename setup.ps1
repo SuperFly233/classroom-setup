@@ -51,7 +51,11 @@ function Format-Speed($bps) {
 
 function Format-ETA($seconds) {
     if ($seconds -le 0 -or $seconds -gt 3600) { return "计算中…" }
-    if ($seconds -ge 60) { return "{0}m {1:D2}s" -f [int]($seconds/60), ($seconds%60) }
+    if ($seconds -ge 60) { 
+        $m = [int][math]::Floor($seconds / 60)
+        $s = [int][math]::Floor($seconds % 60)
+        return "{0}m {1:D2}s" -f $m, $s 
+    }
     return "{0}s" -f [int]$seconds
 }
 
@@ -88,19 +92,31 @@ function Invoke-Download {
                 $speed = $delta / $elapsed
                 $lastBytes = $downloadedBytes
                 $lastTick = $now
+                
                 $pct = 0
-                if ($totalBytes -gt 0) { $pct = [math]::Floor(($downloadedBytes / $totalBytes) * 100) }
+                if ($totalBytes -gt 0) { 
+                    $pct = [int][math]::Floor(($downloadedBytes / $totalBytes) * 100) 
+                    if ($pct -gt 100) { $pct = 100 }
+                }
+                
                 $remaining = $totalBytes - $downloadedBytes
+                if ($remaining -lt 0) { $remaining = 0 }
                 $eta = if ($speed -gt 0) { $remaining / $speed } else { 0 }
+                
                 $recvStr  = Format-Size $downloadedBytes
                 $totalStr = if ($totalBytes -gt 0) { Format-Size $totalBytes } else { "未知大小" }
                 $speedStr = if ($speed -gt 0) { Format-Speed $speed } else { "—" }
                 $etaStr   = Format-ETA $eta
+                
                 $barWidth = 36
                 $filled   = [int]($barWidth * $pct / 100)
+                if ($filled -gt $barWidth) { $filled = $barWidth }
+                if ($filled -lt 0) { $filled = 0 }
+                
                 $empty    = $barWidth - $filled
                 $bar      = ("█" * $filled) + ("░" * $empty)
                 $status = "  $recvStr / $totalStr   $speedStr   ETA $etaStr"
+                
                 Write-Progress -Activity "  下载 $Name" -Status $status -PercentComplete $pct -CurrentOperation "[$bar] $pct%"
             }
         }
@@ -112,10 +128,12 @@ function Invoke-Download {
         if ($null -ne $response)   { $response.Dispose() }
     }
     Write-Progress -Activity "  下载 $Name" -Completed
+    
     $totalTime = ([DateTime]::Now - $startTick).TotalSeconds
-    $totalBytesToReport = if ($totalBytes -gt 0) { $totalBytes } else { $downloadedBytes }
+    $totalBytesToReport = if ($totalBytes -gt 0) { [Math]::Max($totalBytes, $downloadedBytes) } else { $downloadedBytes }
     $avgSpeed  = if ($totalTime -gt 0) { $totalBytesToReport / $totalTime } else { 0 }
-    Write-Ok ("下载完成  " + (Format-Size $totalBytesToReport) + "  均速 " + (Format-Speed $avgSpeed) + "  用时 {0:F1}s" -f $totalTime)
+    
+    Write-Ok ("下载完成  " + (Format-Size $totalBytesToReport) + "  均速 " + (Format-Speed $avgSpeed) + "  用时 $([math]::Round($totalTime, 1))s")
 }
 
 function Install-App {
@@ -128,7 +146,7 @@ function Install-App {
         Write-Host ""
         return
     }
-    $tmp = "$env:TEMP\ikokei_$Name.exe"
+    $tmp = "$env:TEMP\\ikokei_$Name.exe"
     Write-Step "开始下载…"
     try { Invoke-Download -Name $Name -Url $Url -OutFile $tmp }
     catch {
@@ -193,9 +211,10 @@ Install-App `
     -Args "/S" `
     -DetectPath "C:\Program Files (x86)\OCS\OCS.exe"
 
+
 Write-Section "打开网站"
 $sites = @(
-    @{ Name = "i.chaoxing"; Url = "https://i.chaoxing.com/" },
+    @{ Name = "chaoxing"; Url = "https://i.chaoxing.com/" },
     @{ Name = "BJYSoft"; Url = "http://10.174.234.251:85/" }
 )
 foreach ($site in $sites) {
