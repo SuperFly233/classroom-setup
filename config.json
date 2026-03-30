@@ -20,7 +20,7 @@
     },
     {
       "name": "OCS Helper",
-      "url": "https://mooc1.chaoxing.com/softdownload/ocsclient/OCS.exe",
+      "url": "https://cdn.ocsjs.com/app/download/2.9.24/ocs-2.9.24-setup-win-x64.exe",
       "args": "/S",
       "detect": "C:\\Program Files (x86)\\OCS\\OCS.exe",
       "on": true
