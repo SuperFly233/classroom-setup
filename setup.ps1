@@ -137,7 +137,7 @@ function Invoke-Download {
 }
 
 function Install-App {
-    param([string]$Name, [string]$Url, [string]$Args="/S", [string]$DetectPath="")
+    param([string]$Name, [string]$Url, [string]$Arguments="", [string]$DetectPath="")
     Write-Host "  ┄┄ $Name " -ForegroundColor DarkCyan -NoNewline
     Write-Host ("┄" * [Math]::Max(2, 36 - $Name.Length)) -ForegroundColor DarkCyan
     $expanded = [System.Environment]::ExpandEnvironmentVariables($DetectPath)
@@ -146,13 +146,11 @@ function Install-App {
         Write-Host ""
         return
     }
-    $tmp = "$env:TEMP\\ikokei_$Name.exe"
+    $tmp = Join-Path $env:TEMP "ikokei_$Name.exe"
     Write-Step "开始下载…"
     try { Invoke-Download -Name $Name -Url $Url -OutFile $tmp }
     catch {
         Write-Err "下载失败：$($_.Exception.Message)"
-        Write-Warn "你可以手动从以下地址下载后运行："
-        Write-Host "     $Url" -ForegroundColor DarkGray
         Write-Host ""
         return
     }
@@ -161,15 +159,38 @@ function Install-App {
         Write-Host ""
         return
     }
+    
     Write-Step "正在安装，请稍候…"
+    $installSuccess = $false
     try {
-        $proc = Start-Process -FilePath $tmp -ArgumentList $Args -Wait -PassThru -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace($Arguments)) {
+            $proc = Start-Process -FilePath $tmp -Wait -PassThru -ErrorAction Stop
+        } else {
+            $proc = Start-Process -FilePath $tmp -ArgumentList $Arguments -Wait -PassThru -ErrorAction Stop
+        }
+        
         if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
             if ($proc.ExitCode -eq 3010) { Write-Ok "$Name 安装完成（需重启生效）" } else { Write-Ok "$Name 安装完成" }
-        } else { Write-Warn "$Name 安装程序退出码：$($proc.ExitCode)（可能已安装或需手动确认）" }
+        } else { 
+            Write-Warn "安装程序退出码：$($proc.ExitCode)" 
+        }
+        $installSuccess = $true
     }
-    catch { Write-Err "安装失败：$($_.Exception.Message)" }
-    Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    catch {
+        Write-Err "静默安装异常：$($_.Exception.Message)"
+        Write-Step "尝试兜底：正在打开可视安装向导…"
+        try {
+            Start-Process -FilePath $tmp
+            Write-Warn "已为你弹出了 [$Name] 的安装界面，请手动点击安装完成！"
+        } catch {
+            Write-Err "兜底启动失败，文件可能已损坏。"
+        }
+    }
+    
+    # 只有静默安装成功时才清理文件，给兜底安装留足机会
+    if ($installSuccess) {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    }
     Write-Host ""
 }
 
@@ -196,19 +217,19 @@ Write-Section "软件安装"
 Install-App `
     -Name "WPS Office" `
     -Url "https://official-package.wpscdn.cn/wps/download/WPS_Setup_25225.exe" `
-    -Args "/S /v/qn" `
+    -Arguments "/S /v/qn" `
     -DetectPath "C:\Program Files (x86)\Kingsoft\WPS Office"
 
 Install-App `
     -Name "PixPin" `
     -Url "https://down.pixpin.cn/PixPin_cn_zh-cn_3.0.8.0.exe" `
-    -Args "/S" `
+    -Arguments "/S" `
     -DetectPath "%LOCALAPPDATA%\PixPin\PixPin.exe"
 
 Install-App `
     -Name "OCS Helper" `
     -Url "https://cdn.ocsjs.com/app/download/2.9.24/ocs-2.9.24-setup-win-x64.exe" `
-    -Args "/S" `
+    -Arguments "/S" `
     -DetectPath "C:\Program Files (x86)\OCS\OCS.exe"
 
 
@@ -220,12 +241,26 @@ $sites = @(
 foreach ($site in $sites) {
     if ($site.Url) {
         Write-Step "打开 $($site.Name)…"
-        Start-Process $site.Url
+        $opened = $false
+        
+        # 优先级1：强制 Edge
+        try { Start-Process "msedge" -ArgumentList $site.Url -ErrorAction Stop; $opened = $true } catch {}
+        
+        # 优先级2：强制 Chrome
+        if (-not $opened) {
+            try { Start-Process "chrome" -ArgumentList $site.Url -ErrorAction Stop; $opened = $true } catch {}
+        }
+        
+        # 优先级3：系统默认浏览器（如 360 等）
+        if (-not $opened) {
+            try { Start-Process $site.Url -ErrorAction SilentlyContinue } catch {}
+        }
+        
         Start-Sleep -Milliseconds 500
     }
 }
 $siteCount = ($sites | Where-Object { $_.Url }).Count
-if ($siteCount -gt 0) { Write-Ok "已在浏览器中打开 $siteCount 个网站" }
+if ($siteCount -gt 0) { Write-Ok "已在浏览器中触发打开 $siteCount 个网站" }
 
 Write-Host ""
 Write-Host "  ╔══════════════════════════════════════════════════╗" -ForegroundColor Cyan
