@@ -392,7 +392,6 @@ function buildScript(){
   const apps=S.apps.filter(a=>a.on&&a.url);
   const sites=S.sites.filter(s=>s.on&&s.url);
   
-  // 修复了变量冲突 Bug，并换用了 Join-Path 规避路径转义问题
   const appBlocks=apps.map(a=>`Install-App \`\n    -Name "${a.name||'未命名'}" \`\n    -Url "${a.url}" \`\n    -Arguments "${a.args||''}" \`\n    -DetectPath "${a.detect||''}"\n`).join('\n');
   
   const siteBlocks=sites.map(s=>`    @{ Name = "${s.name||'未命名'}"; Url = "${s.url}" }`).join(',\n');
@@ -563,15 +562,26 @@ function Install-App {
     $installSuccess = $false
     try {
         if ([string]::IsNullOrWhiteSpace($Arguments)) {
-            $proc = Start-Process -FilePath $tmp -Wait -PassThru -ErrorAction Stop
+            $proc = Start-Process -FilePath $tmp -PassThru -ErrorAction Stop
         } else {
-            $proc = Start-Process -FilePath $tmp -ArgumentList $Arguments -Wait -PassThru -ErrorAction Stop
+            $proc = Start-Process -FilePath $tmp -ArgumentList $Arguments -PassThru -ErrorAction Stop
         }
         
-        if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
-            if ($proc.ExitCode -eq 3010) { Write-Ok "$Name 安装完成（需重启生效）" } else { Write-Ok "$Name 安装完成" }
-        } else { 
-            Write-Warn "安装程序退出码：$($proc.ExitCode)" 
+        # 核心防卡死机制：最多只等 90 秒
+        try {
+            $proc | Wait-Process -Timeout 90 -ErrorAction Stop
+        } catch {
+            Write-Warn "等待超时(90s)或进程已驻留后台，已自动跳过！"
+        }
+        
+        if ($proc.HasExited) {
+            if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
+                Write-Ok "$Name 安装完成"
+            } else { 
+                Write-Warn "安装程序退出码：$($proc.ExitCode)" 
+            }
+        } else {
+            Write-Ok "$Name 正在后台运行或已完成"
         }
         $installSuccess = $true
     }
@@ -579,15 +589,16 @@ function Install-App {
         Write-Err "静默安装异常：$($_.Exception.Message)"
         Write-Step "尝试兜底：正在打开可视安装向导…"
         try {
+            # 兜底机制：一旦弹出窗口，脚本绝不停留等待，立刻去下个目标！
             Start-Process -FilePath $tmp
             Write-Warn "已为你弹出了 [$Name] 的安装界面，请手动点击安装完成！"
+            Write-Skip "脚本不会在此停留，正在继续后续任务..."
         } catch {
             Write-Err "兜底启动失败，文件可能已损坏。"
         }
     }
     
-    # 只有静默安装成功时才清理文件，给兜底安装留足机会
-    if ($installSuccess) {
+    if ($installSuccess -and $proc.HasExited) {
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
     }
     Write-Host ""
